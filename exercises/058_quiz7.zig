@@ -1,43 +1,3 @@
-//
-// We've absorbed a lot of information about the variations of types
-// we can use in Zig. Roughly, in order we have:
-//
-//                          u8  single item
-//                         *u8  single-item pointer
-//                        []u8  slice (size known at runtime)
-//                       [5]u8  array of 5 u8s
-//                       [*]u8  many-item pointer (zero or more)
-//                 enum {a, b}  set of unique values a and b
-//                error {e, f}  set of unique error values e and f
-//      struct {y: u8, z: i32}  group of values y and z
-// union(enum) {a: u8, b: i32}  single value either u8 or i32
-//
-// Values of any of the above types can be assigned as "var" or "const"
-// to allow or disallow changes (mutability) via the assigned name:
-//
-//     const a: u8 = 5; // immutable
-//       var b: u8 = 5; //   mutable
-//
-// We can also make error unions or optional types from any of
-// the above:
-//
-//     var a: E!u8 = 5; // can be u8 or error from set E
-//     var b: ?u8 = 5;  // can be u8 or null
-//
-// Knowing all of this, maybe we can help out a local hermit. He made
-// a little Zig program to help him plan his trips through the woods,
-// but it has some mistakes.
-//
-// *************************************************************
-// *                A NOTE ABOUT THIS EXERCISE                 *
-// *                                                           *
-// * You do NOT have to read and understand every bit of this  *
-// * program. This is a very big example. Feel free to skim    *
-// * through it and then just focus on the few parts that are  *
-// * actually broken!                                          *
-// *                                                           *
-// *************************************************************
-//
 const print = @import("std").debug.print;
 
 // The grue is a nod to Zork.
@@ -62,33 +22,6 @@ var d = Place{ .name = "Dogwood Grove" };
 var e = Place{ .name = "East Pond" };
 var f = Place{ .name = "Fox Pond" };
 
-//           The hermit's hand-drawn ASCII map
-//  +---------------------------------------------------+
-//  |         * Archer's Point                ~~~~      |
-//  | ~~~                              ~~~~~~~~         |
-//  |   ~~~| |~~~~~~~~~~~~      ~~~~~~~                 |
-//  |         Bridge     ~~~~~~~~                       |
-//  |  ^             ^                           ^      |
-//  |     ^ ^                      / \                  |
-//  |    ^     ^  ^       ^        |_| Cottage          |
-//  |   Dogwood Grove                                   |
-//  |                  ^     <boat>                     |
-//  |  ^  ^  ^  ^          ~~~~~~~~~~~~~    ^   ^       |
-//  |      ^             ~~ East Pond ~~~               |
-//  |    ^    ^   ^       ~~~~~~~~~~~~~~                |
-//  |                           ~~          ^           |
-//  |           ^            ~~~ <-- short waterfall    |
-//  |   ^                 ~~~~~                         |
-//  |            ~~~~~~~~~~~~~~~~~                      |
-//  |          ~~~~ Fox Pond ~~~~~~~    ^         ^     |
-//  |      ^     ~~~~~~~~~~~~~~~           ^ ^          |
-//  |                ~~~~~                              |
-//  +---------------------------------------------------+
-//
-// We'll be reserving memory in our program based on the number of
-// places on the map. Note that we do not have to specify the type of
-// this value because we don't actually use it in our program once
-// it's compiled! (Don't worry if this doesn't make sense yet.)
 const place_count = 6;
 
 // Now let's create all of the paths between sites. A path goes from
@@ -192,8 +125,8 @@ const TripItem = union(enum) {
             // Oops! The hermit forgot how to capture the union values
             // in a switch statement. Please capture both values as
             // 'p' so the print statements work!
-            .place => print("{s}", .{p.name}),
-            .path => print("--{}->", .{p.dist}),
+            .place => |p| print("{s}", .{p.name}),
+            .path => |p| print("--{}->", .{p.dist}),
         }
     }
 };
@@ -255,7 +188,9 @@ const HermitsNotebook = struct {
             // dereference and optional value "unwrapping" look
             // together. Remember that you return the address with the
             // "&" operator.
-            if (place == entry.*.?.place) return entry;
+            if (place == entry.*.?.place) {
+                return &(entry.*.?);
+            }
             // Try to make your answer this long:__________;
         }
         return null;
@@ -309,7 +244,7 @@ const HermitsNotebook = struct {
     //
     // Looks like the hermit forgot something in the return value of
     // this function. What could that be?
-    fn getTripTo(self: *HermitsNotebook, trip: []?TripItem, dest: *Place) void {
+    fn getTripTo(self: *HermitsNotebook, trip: []?TripItem, dest: *Place) TripError!void {
         // We start at the destination entry.
         const destination_entry = self.getEntry(dest);
 
@@ -394,6 +329,7 @@ pub fn main() void {
         // reach that place. Again, read the comments for the
         // checkNote() method to see how this works.
         for (place_entry.place.paths) |*path| {
+            // somehow two entries aren't matching while they should
             working_note = NotebookEntry{
                 .place = path.to,
                 .coming_from = place_entry.place,
